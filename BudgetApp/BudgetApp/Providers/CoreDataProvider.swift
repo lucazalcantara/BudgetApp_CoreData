@@ -20,6 +20,7 @@ class CoreDataProvider {
         
         let provider = CoreDataProvider(inMemory: true)
         let context = provider.context
+        
         let entertainment = Budget(context: context)
         entertainment.title = "Entertainment"
         entertainment.limit = 500
@@ -29,6 +30,13 @@ class CoreDataProvider {
         groceries.title = "Groceries"
         groceries.limit = 200
         groceries.dateCreated = Date()
+        
+        let milk = Expense(context: context)
+        milk.title = "Milk"
+        milk.amount = 5.45
+        milk.dateCreated = Date()
+        
+        groceries.addToExpenses(milk)
         
         do {
             try context.save()
