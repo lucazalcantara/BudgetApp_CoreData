@@ -22,8 +22,19 @@ struct BudgetDetailScreen: View {
         self.budget = budget
         _expenses = FetchRequest(sortDescriptors: [], predicate: NSPredicate(format: "budget == %@", budget))
     }
+    
     private var isFormValid: Bool {
         !title.isEmptyOrWhitespace && amount != nil && Double(amount!) > 0
+    }
+    
+    private var total: Double {
+        return expenses.reduce(0) { result, expense in
+            expense.amount + result
+        }
+    }
+    
+    private var remaining: Double {
+        budget.limit - total
     }
     
     private func addExpense() {
@@ -44,7 +55,26 @@ struct BudgetDetailScreen: View {
         }
     }
     
+    private func deleteExpense(_ indexSet: IndexSet) {
+        indexSet.forEach { index in
+            let expense = expenses[index]
+            context.delete(expense)
+        }
+        
+        do {
+            try context.save()
+        } catch {
+            print(error.localizedDescription)
+        }
+    }
+    
     var body: some View {
+        
+        VStack {
+            Text(budget.limit, format: .currency(code: Locale.currencyCode))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
+        }
         Form {
             Section("New expense") {
                 TextField("Title", text: $title)
@@ -59,14 +89,30 @@ struct BudgetDetailScreen: View {
                 }).buttonStyle(.borderedProminent)
                     .disabled(!isFormValid)
             }
+            
             Section("Expenses") {
                 
-                List(expenses) { expense in
-                    HStack {
-                        Text(expense.title ?? "")
-                        Spacer()
-                        Text(expense.amount, format: .currency(code: Locale.current.currency?.identifier ?? "USD"))
+                List {
+                    VStack {
+                        HStack {
+                            Spacer()
+                            Text("Total:")
+                            Text(total, format: .currency(code: Locale.currencyCode))
+                            Spacer()
+                        }
+                        
+                        HStack {
+                            Spacer()
+                            Text("Remaining:")
+                            Text(remaining, format: .currency(code: Locale.currencyCode))
+                                .foregroundStyle(remaining < 0 ? .red: .green)
+                            Spacer()
+                        }
                     }
+                    
+                    ForEach(expenses) { expense in
+                        ExpenseCellView(expense: expense)
+                    }.onDelete(perform: deleteExpense)
                 }
             }
             
@@ -79,7 +125,7 @@ struct BudgetDetailScreenContainer: View {
     @FetchRequest(sortDescriptors: []) private var budgets: FetchedResults<Budget>
     
     var body: some View {
-        BudgetDetailScreen(budget: budgets[0])
+        BudgetDetailScreen(budget: budgets.first(where: { $0.title == "Groceries"})!)
     }
 }
 
@@ -89,3 +135,5 @@ struct BudgetDetailScreenContainer: View {
             .environment(\.managedObjectContext, CoreDataProvider.preview.context)
     }
 }
+
+
